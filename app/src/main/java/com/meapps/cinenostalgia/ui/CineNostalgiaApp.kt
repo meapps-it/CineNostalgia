@@ -26,6 +26,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
@@ -63,6 +65,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -91,18 +94,23 @@ fun CineNostalgiaApp(viewModel: CineNostalgiaViewModel = viewModel()) {
     var credits by remember { mutableStateOf(false) }
     var settings by remember { mutableStateOf(false) }
 
+    val navigateBack: () -> Unit = {
+        when {
+            credits -> credits = false
+            settings -> settings = false
+            state.detail != null -> viewModel.closeMovie()
+            state.decadeLabel != null -> viewModel.closeDecade()
+            tab != MainTab.HOME -> tab = MainTab.HOME
+        }
+    }
+    val hasInternalBackStack = credits || settings || state.detail != null || state.decadeLabel != null || tab != MainTab.HOME
+    BackHandler(enabled = hasInternalBackStack, onBack = navigateBack)
+
     Scaffold(
         topBar = {
             MEHeader(
                 canGoBack = state.detail != null || state.decadeLabel != null || credits || settings,
-                onBack = {
-                    when {
-                        credits -> credits = false
-                        settings -> settings = false
-                        state.detail != null -> viewModel.closeMovie()
-                        else -> viewModel.closeDecade()
-                    }
-                },
+                onBack = navigateBack,
                 onCredits = { credits = true },
                 onSettings = { settings = true }
             )
@@ -286,8 +294,11 @@ private fun FavoritesScreen(movies: List<MovieSummary>, onOpen: (Int) -> Unit) {
 private fun SearchField(value: String, onValue: (String) -> Unit, onSearch: () -> Unit = {}) {
     OutlinedTextField(
         value = value, onValueChange = onValue, modifier = Modifier.fillMaxWidth(), singleLine = true,
-        placeholder = { Text("Cerca un film...") }, leadingIcon = { Icon(Icons.Default.Search, null) },
-        shape = RoundedCornerShape(18.dp), keyboardActions = KeyboardActions(onSearch = { onSearch() })
+        placeholder = { Text("Cerca film o attore...") }, leadingIcon = { Icon(Icons.Default.Search, null) },
+        trailingIcon = { IconButton(onClick = onSearch) { Icon(Icons.Default.Search, "Avvia ricerca") } },
+        shape = RoundedCornerShape(18.dp),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { onSearch() })
     )
 }
 
@@ -348,10 +359,16 @@ private fun DetailScreen(detail: MovieDetail, isFavorite: Boolean, onToggleFavor
             }
         }
         item { DetailCard("Trama") { Text(detail.overview ?: "Informazione non disponibile") } }
-        if (detail.cast.isNotEmpty()) item { CastSection(detail.cast, detail.summary.releaseDate) }
-        if (detail.locations.isNotEmpty()) item { LocationsSection(detail.locations) }
-        if (detail.curiosities.isNotEmpty()) item {
-            DetailCard("Curiosità") { detail.curiosities.forEach { Text("• $it", modifier = Modifier.padding(bottom = 7.dp)) } }
+        item { CastSection(detail.cast, detail.summary.releaseDate) }
+        item { LocationsSection(detail.locations) }
+        item {
+            DetailCard("Curiosità") {
+                if (detail.curiosities.isEmpty()) {
+                    Text("Informazione non disponibile dalle fonti collegate.", color = MEColors.SecondaryText)
+                } else {
+                    detail.curiosities.forEach { Text("• $it", modifier = Modifier.padding(bottom = 7.dp)) }
+                }
+            }
         }
         item {
             DetailCard("Spoiler") {
@@ -371,6 +388,7 @@ private fun DetailScreen(detail: MovieDetail, isFavorite: Boolean, onToggleFavor
 @Composable
 private fun CastSection(cast: List<PersonRole>, releaseDate: String?) {
     DetailCard("Cast · Allora e oggi") {
+        if (cast.isEmpty()) Text("Informazione non disponibile dalle fonti collegate.", color = MEColors.SecondaryText)
         cast.forEach { person ->
             Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
                 Poster(person.profileUrl, Modifier.size(70.dp))
@@ -392,6 +410,9 @@ private fun CastSection(cast: List<PersonRole>, releaseDate: String?) {
 private fun LocationsSection(locations: List<FilmLocation>) {
     val context = LocalContext.current
     DetailCard("Location · Com'è oggi") {
+        if (locations.isEmpty()) {
+            Text("Location e confronto con il presente non disponibili dalle fonti collegate.", color = MEColors.SecondaryText)
+        }
         locations.forEach { location ->
             Text(location.name, fontWeight = FontWeight.Bold, fontSize = 17.sp)
             Text("Nel film: ${location.scene}", color = MEColors.SecondaryText)

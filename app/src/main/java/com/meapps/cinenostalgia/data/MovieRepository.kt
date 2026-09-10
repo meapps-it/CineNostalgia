@@ -24,10 +24,22 @@ class MovieRepository(
 
     suspend fun search(query: String): List<MovieSummary> {
         if (query.isBlank()) return emptyList()
-        if (!hasApiKey) return demoMovies.filter {
-            it.title.contains(query, true) || it.originalTitle.contains(query, true)
+        if (!hasApiKey) {
+            val movieMatches = demoMovies.filter { it.title.contains(query, true) || it.originalTitle.contains(query, true) }
+            val actorMatches = demoDetail.cast.any { it.name.contains(query, true) }
+            return if (actorMatches) (movieMatches + demoMovies).distinctBy { it.id } else movieMatches
         }
-        return api.search(apiKey, query).results.map { it.toSummary() }
+        return coroutineScope {
+            val moviesRequest = async { api.search(apiKey, query).results }
+            val peopleRequest = async { runCatching { api.searchPeople(apiKey, query).results.take(3) }.getOrDefault(emptyList()) }
+            val actorMovies = peopleRequest.await().map { person ->
+                async { runCatching { api.personMovieCredits(person.id, apiKey).cast }.getOrDefault(emptyList()) }
+            }.awaitAll().flatten()
+            (moviesRequest.await() + actorMovies)
+                .distinctBy { it.id }
+                .sortedWith(compareByDescending<com.meapps.cinenostalgia.network.MovieDto> { it.releaseDate?.take(4)?.toIntOrNull() ?: 0 }.thenBy { it.title })
+                .map { it.toSummary() }
+        }
     }
 
     suspend fun discover(fromYear: Int, toYear: Int, page: Int = 1): List<MovieSummary> {

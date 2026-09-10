@@ -6,6 +6,9 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 data class SearchResponse(val results:List<MovieDto>)
+data class PersonSearchResponse(val results:List<PersonSearchDto>)
+data class PersonSearchDto(val id:Int,val name:String)
+data class PersonMovieCreditsDto(val cast:List<MovieDto>)
 data class MovieDto(val id:Int,val title:String,@SerializedName("original_title")val originalTitle:String,
     @SerializedName("release_date")val releaseDate:String?,@SerializedName("poster_path")val posterPath:String?)
 data class GenreDto(val name:String)
@@ -23,6 +26,8 @@ data class MovieDetailDto(val id:Int,val title:String,@SerializedName("original_
 
 interface TmdbApi {
     @GET("search/movie") suspend fun search(@Query("api_key")key:String,@Query("query")query:String,@Query("language")language:String="it-IT"):SearchResponse
+    @GET("search/person") suspend fun searchPeople(@Query("api_key")key:String,@Query("query")query:String,@Query("language")language:String="it-IT"):PersonSearchResponse
+    @GET("person/{id}/movie_credits") suspend fun personMovieCredits(@Path("id")id:Int,@Query("api_key")key:String,@Query("language")language:String="it-IT"):PersonMovieCreditsDto
     @GET("discover/movie") suspend fun discover(@Query("api_key")key:String,@Query("primary_release_date.gte")from:String,@Query("primary_release_date.lte")to:String,
         @Query("page")page:Int=1,@Query("sort_by")sort:String="popularity.desc",@Query("language")language:String="it-IT",
         @Query("include_adult")includeAdult:Boolean=false):SearchResponse

@@ -6,7 +6,7 @@ Package ID stabile: `com.meapps.cinenostalgia`.
 
 ## Funzioni V1
 
-- Home, ricerca TMDB, risultati e scheda film
+- Home, ricerca TMDB per titolo o attore, risultati e scheda film
 - cast con età all'uscita e età attuale/alla morte quando disponibile
 - sezione Allora e oggi senza immagini inventate
 - location curate con apertura nell'app mappe del telefono
@@ -15,6 +15,7 @@ Package ID stabile: `com.meapps.cinenostalgia`.
 - tema riutilizzabile ME Apps, senza font incorporati
 - dimensione del testo regolabile e persistente, applicata sopra le impostazioni di sistema
 - cataloghi Anni 70, 80, 90 e 2000 con caricamento progressivo da TMDB
+- navigazione Indietro coerente con il tasto di sistema Android
 
 ## Configurazione TMDB
 
