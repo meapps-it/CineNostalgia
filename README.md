@@ -13,6 +13,8 @@ Package ID stabile: `com.meapps.cinenostalgia`.
 - trama, curiosità, spoiler nascosti e provider italiani
 - preferiti offline persistenti con Room
 - tema riutilizzabile ME Apps, senza font incorporati
+- dimensione del testo regolabile e persistente, applicata sopra le impostazioni di sistema
+- cataloghi Anni 70, 80, 90 e 2000 con caricamento progressivo da TMDB
 
 ## Configurazione TMDB
 

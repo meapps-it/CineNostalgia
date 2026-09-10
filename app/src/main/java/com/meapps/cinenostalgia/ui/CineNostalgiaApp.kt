@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -47,6 +48,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -74,38 +76,63 @@ import com.meapps.cinenostalgia.data.PersonRole
 import com.meapps.cinenostalgia.ui.theme.MEColors
 
 private enum class MainTab(val label: String) { HOME("Home"), SEARCH("Cerca"), FAVORITES("Preferiti") }
+private data class Decade(val label: String, val fromYear: Int, val toYear: Int)
+private val decades = listOf(
+    Decade("Anni 70", 1970, 1979), Decade("Anni 80", 1980, 1989),
+    Decade("Anni 90", 1990, 1999), Decade("Anni 2000", 2000, 2009)
+)
 
 @Composable
 fun CineNostalgiaApp(viewModel: CineNostalgiaViewModel = viewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val favorites by viewModel.favorites.collectAsStateWithLifecycle()
+    val fontScale by viewModel.fontScale.collectAsStateWithLifecycle()
     var tab by remember { mutableStateOf(MainTab.HOME) }
     var credits by remember { mutableStateOf(false) }
+    var settings by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             MEHeader(
-                canGoBack = state.detail != null || credits,
-                onBack = { if (credits) credits = false else viewModel.closeMovie() },
-                onCredits = { credits = true }
+                canGoBack = state.detail != null || state.decadeLabel != null || credits || settings,
+                onBack = {
+                    when {
+                        credits -> credits = false
+                        settings -> settings = false
+                        state.detail != null -> viewModel.closeMovie()
+                        else -> viewModel.closeDecade()
+                    }
+                },
+                onCredits = { credits = true },
+                onSettings = { settings = true }
             )
         },
         bottomBar = {
-            if (state.detail == null && !credits) MEBottomBar(tab = tab, onTab = { tab = it })
+            if (state.detail == null && state.decadeLabel == null && !credits && !settings) MEBottomBar(tab = tab, onTab = { tab = it })
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             when {
                 credits -> CreditsScreen()
+                settings -> SettingsScreen(fontScale, viewModel::setFontScale)
                 state.detail != null -> DetailScreen(
                     detail = state.detail!!,
                     isFavorite = favorites.any { it.id == state.detail!!.summary.id },
                     onToggleFavorite = { viewModel.toggleFavorite(state.detail!!.summary, it) }
                 )
-                tab == MainTab.HOME -> HomeScreen(state, viewModel.apiReady, viewModel::updateQuery) {
-                    tab = MainTab.SEARCH
-                }
+                state.decadeLabel != null -> DecadeScreen(
+                    state = state,
+                    onOpen = viewModel::openMovie,
+                    onLoadMore = {
+                        decades.firstOrNull { it.label == state.decadeLabel }?.let { viewModel.loadMoreDecade(it.fromYear, it.toYear) }
+                    }
+                )
+                tab == MainTab.HOME -> HomeScreen(
+                    state, viewModel.apiReady, viewModel::updateQuery,
+                    onSearch = { tab = MainTab.SEARCH },
+                    onDecade = { decade -> viewModel.openDecade(decade.label, decade.fromYear, decade.toYear) }
+                )
                 tab == MainTab.SEARCH -> SearchScreen(state, viewModel::updateQuery, viewModel::openMovie)
                 else -> FavoritesScreen(favorites, viewModel::openMovie)
             }
@@ -115,7 +142,7 @@ fun CineNostalgiaApp(viewModel: CineNostalgiaViewModel = viewModel()) {
 }
 
 @Composable
-private fun MEHeader(canGoBack: Boolean, onBack: () -> Unit, onCredits: () -> Unit) {
+private fun MEHeader(canGoBack: Boolean, onBack: () -> Unit, onCredits: () -> Unit, onSettings: () -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     Row(
         Modifier.fillMaxWidth().background(MEColors.Navy).statusBarsPadding().padding(horizontal = 14.dp, vertical = 10.dp),
@@ -131,6 +158,10 @@ private fun MEHeader(canGoBack: Boolean, onBack: () -> Unit, onCredits: () -> Un
                 Icon(Icons.Default.Menu, "Menu", tint = Color.White)
             }
             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                DropdownMenuItem(text = { Text("Impostazioni") }, leadingIcon = { Icon(Icons.Default.Settings, null) }, onClick = {
+                    expanded = false
+                    onSettings()
+                })
                 DropdownMenuItem(text = { Text("Fonti e crediti") }, leadingIcon = { Icon(Icons.Default.Info, null) }, onClick = {
                     expanded = false
                     onCredits()
@@ -167,7 +198,7 @@ private fun MEBottomBar(tab: MainTab, onTab: (MainTab) -> Unit) {
 }
 
 @Composable
-private fun HomeScreen(state: MovieUiState, apiReady: Boolean, onQuery: (String) -> Unit, onSearch: () -> Unit) {
+private fun HomeScreen(state: MovieUiState, apiReady: Boolean, onQuery: (String) -> Unit, onSearch: () -> Unit, onDecade: (Decade) -> Unit) {
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
             MECard {
@@ -182,9 +213,51 @@ private fun HomeScreen(state: MovieUiState, apiReady: Boolean, onQuery: (String)
         item { SectionTitle("Viaggia nel tempo") }
         item {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                items(listOf("Anni 70", "Anni 80", "Anni 90", "Anni 2000")) { decade ->
-                    Text(decade, Modifier.background(Color.White, RoundedCornerShape(22.dp)).padding(horizontal = 18.dp, vertical = 12.dp), fontWeight = FontWeight.Bold)
+                items(decades) { decade ->
+                    Text(decade.label, Modifier.clickable { onDecade(decade) }.background(Color.White, RoundedCornerShape(22.dp)).padding(horizontal = 18.dp, vertical = 12.dp), fontWeight = FontWeight.Bold)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DecadeScreen(state: MovieUiState, onOpen: (Int) -> Unit, onLoadMore: () -> Unit) {
+    LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        item { SectionTitle(state.decadeLabel ?: "Film") }
+        if (state.decadeMovies.isEmpty() && !state.loading) {
+            item { MECard { Text("Configura TMDB per caricare l'intero catalogo.", color = MEColors.SecondaryText) } }
+        }
+        items(state.decadeMovies, key = { it.id }) { MovieResult(it) { onOpen(it.id) } }
+        if (state.canLoadMore && state.decadeMovies.isNotEmpty()) {
+            item {
+                Button(onClick = onLoadMore, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = MEColors.Blue)) {
+                    Text("Carica altri film")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsScreen(fontScale: Float, onFontScaleChange: (Float) -> Unit) {
+    LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item { SectionTitle("Impostazioni") }
+        item {
+            DetailCard("Dimensione testo") {
+                Text("Regola i testi dell'app", color = MEColors.SecondaryText)
+                Slider(
+                    value = fontScale,
+                    onValueChange = onFontScaleChange,
+                    valueRange = 0.80f..1.40f,
+                    steps = 5
+                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Piccolo", fontSize = 12.sp)
+                    Text("${(fontScale * 100).toInt()}%", color = MEColors.Blue, fontWeight = FontWeight.Bold)
+                    Text("Grande", fontSize = 18.sp)
+                }
+                Text("Il cursore si aggiunge alla dimensione scelta nelle impostazioni Samsung.", fontSize = 12.sp, color = MEColors.SecondaryText, modifier = Modifier.padding(top = 8.dp))
             }
         }
     }

@@ -30,9 +30,9 @@ class MovieRepository(
         return api.search(apiKey, query).results.map { it.toSummary() }
     }
 
-    suspend fun discover(fromYear: Int, toYear: Int): List<MovieSummary> {
+    suspend fun discover(fromYear: Int, toYear: Int, page: Int = 1): List<MovieSummary> {
         if (!hasApiKey) return demoMovies
-        return api.discover(apiKey, "$fromYear-01-01", "$toYear-12-31").results.take(12).map { it.toSummary() }
+        return api.discover(apiKey, "$fromYear-01-01", "$toYear-12-31", page).results.map { it.toSummary() }
     }
 
     suspend fun detail(id: Int): MovieDetail = coroutineScope {

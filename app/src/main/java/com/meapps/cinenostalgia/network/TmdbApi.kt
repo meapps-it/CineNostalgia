@@ -24,7 +24,8 @@ data class MovieDetailDto(val id:Int,val title:String,@SerializedName("original_
 interface TmdbApi {
     @GET("search/movie") suspend fun search(@Query("api_key")key:String,@Query("query")query:String,@Query("language")language:String="it-IT"):SearchResponse
     @GET("discover/movie") suspend fun discover(@Query("api_key")key:String,@Query("primary_release_date.gte")from:String,@Query("primary_release_date.lte")to:String,
-        @Query("sort_by")sort:String="vote_count.desc",@Query("language")language:String="it-IT"):SearchResponse
+        @Query("page")page:Int=1,@Query("sort_by")sort:String="popularity.desc",@Query("language")language:String="it-IT",
+        @Query("include_adult")includeAdult:Boolean=false):SearchResponse
     @GET("movie/{id}") suspend fun movie(@Path("id")id:Int,@Query("api_key")key:String,@Query("language")language:String="it-IT"):MovieDetailDto
     @GET("movie/{id}/credits") suspend fun credits(@Path("id")id:Int,@Query("api_key")key:String,@Query("language")language:String="it-IT"):CreditsDto
     @GET("movie/{id}/watch/providers") suspend fun providers(@Path("id")id:Int,@Query("api_key")key:String):ProviderResponseDto

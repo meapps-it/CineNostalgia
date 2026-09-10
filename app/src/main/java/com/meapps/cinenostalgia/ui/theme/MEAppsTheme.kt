@@ -5,7 +5,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 
 object MEColors {
     val Navy = Color(0xFF0F172A)
@@ -44,7 +47,11 @@ private val DarkColors = darkColorScheme(
 )
 
 @Composable
-fun MEAppsTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+fun MEAppsTheme(darkTheme: Boolean = isSystemInDarkTheme(), fontScaleMultiplier: Float = 1f, content: @Composable () -> Unit) {
     // Typography intentionally uses Compose defaults: no bundled font overrides the device font.
-    MaterialTheme(colorScheme = if (darkTheme) DarkColors else LightColors, content = content)
+    val systemDensity = LocalDensity.current
+    val adjustedDensity = Density(systemDensity.density, systemDensity.fontScale * fontScaleMultiplier.coerceIn(0.80f, 1.40f))
+    CompositionLocalProvider(LocalDensity provides adjustedDensity) {
+        MaterialTheme(colorScheme = if (darkTheme) DarkColors else LightColors, content = content)
+    }
 }

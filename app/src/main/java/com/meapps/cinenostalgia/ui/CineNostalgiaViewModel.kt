@@ -21,15 +21,22 @@ data class MovieUiState(
     val results: List<MovieSummary> = emptyList(),
     val featured: List<MovieSummary> = MovieRepository.demoMovies,
     val detail: MovieDetail? = null,
+    val decadeLabel: String? = null,
+    val decadeMovies: List<MovieSummary> = emptyList(),
+    val decadePage: Int = 0,
+    val canLoadMore: Boolean = true,
     val loading: Boolean = false,
     val error: String? = null
 )
 
 class CineNostalgiaViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = (application as CineNostalgiaApplication).repository
+    private val app = application as CineNostalgiaApplication
+    private val repository = app.repository
+    private val settingsRepository = app.settingsRepository
     private val _state = MutableStateFlow(MovieUiState())
     val state: StateFlow<MovieUiState> = _state.asStateFlow()
     val favorites = repository.favoriteMovies.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val fontScale = settingsRepository.fontScale.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 1f)
     val apiReady: Boolean get() = repository.hasApiKey
     private var searchJob: Job? = null
 
@@ -57,9 +64,35 @@ class CineNostalgiaViewModel(application: Application) : AndroidViewModel(applic
         repository.toggleFavorite(movie, isFavorite)
     }
 
+    fun setFontScale(value: Float) = viewModelScope.launch { settingsRepository.setFontScale(value) }
+
+    fun openDecade(label: String, fromYear: Int, toYear: Int) = viewModelScope.launch {
+        _state.value = _state.value.copy(decadeLabel = label, decadeMovies = emptyList(), decadePage = 0, canLoadMore = true)
+        loadDecadePage(fromYear, toYear)
+    }
+
+    fun loadMoreDecade(fromYear: Int, toYear: Int) = viewModelScope.launch { loadDecadePage(fromYear, toYear) }
+
+    fun closeDecade() {
+        _state.value = _state.value.copy(decadeLabel = null, decadeMovies = emptyList(), decadePage = 0, canLoadMore = true)
+    }
+
     private fun loadFeatured() = viewModelScope.launch {
         runCatching { repository.discover(1970, 2009) }
             .onSuccess { _state.value = _state.value.copy(featured = it.ifEmpty { MovieRepository.demoMovies }) }
+    }
+
+    private suspend fun loadDecadePage(fromYear: Int, toYear: Int) {
+        if (_state.value.loading || !_state.value.canLoadMore) return
+        val nextPage = _state.value.decadePage + 1
+        runLoading { current ->
+            val page = repository.discover(fromYear, toYear, nextPage)
+            current.copy(
+                decadeMovies = (current.decadeMovies + page).distinctBy { it.id },
+                decadePage = nextPage,
+                canLoadMore = page.isNotEmpty() && repository.hasApiKey
+            )
+        }
     }
 
     private suspend fun runLoading(transform: suspend (MovieUiState) -> MovieUiState) {
