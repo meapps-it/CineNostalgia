@@ -34,5 +34,6 @@ Questo prodotto usa l'API TMDB ma non è approvato o certificato da TMDB.
 
 ## Codemagic
 
-Creare il gruppo `cinenostalgia_secrets` e aggiungere `TMDB_API_KEY` come variabile
-protetta. Il workflow `android-v1` produce APK debug, AAB release e report dei test.
+Aggiungere `TMDB_API_KEY` come variabile protetta nell'editor del workflow per
+attivare il catalogo online. La build funziona anche senza la variabile, usando la
+modalità demo. Il workflow `android-v1` produce APK debug, AAB release e report dei test.
