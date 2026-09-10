@@ -13,7 +13,7 @@ class MovieRepository(
     private val apiKey: String
 ) {
     val hasApiKey: Boolean get() = apiKey.isNotBlank()
-    val favoriteMovies: Flow<List<MovieSummary>> = favorites.observeAll().map { list -> list.map(FavoriteEntity::summary) }
+    val favoriteMovies: Flow<List<MovieSummary>> = favorites.observeAll().map { list -> list.map { it.summary() } }
 
     fun isFavorite(id: Int): Flow<Boolean> = favorites.observeIsFavorite(id)
 

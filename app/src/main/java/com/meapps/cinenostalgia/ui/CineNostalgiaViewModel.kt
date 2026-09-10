@@ -44,11 +44,13 @@ class CineNostalgiaViewModel(application: Application) : AndroidViewModel(applic
         }
         searchJob = viewModelScope.launch {
             delay(350)
-            runLoading { copy(results = repository.search(value)) }
+            runLoading { current -> current.copy(results = repository.search(value)) }
         }
     }
 
-    fun openMovie(id: Int) = viewModelScope.launch { runLoading { copy(detail = repository.detail(id)) } }
+    fun openMovie(id: Int) = viewModelScope.launch {
+        runLoading { current -> current.copy(detail = repository.detail(id)) }
+    }
     fun closeMovie() { _state.value = _state.value.copy(detail = null, error = null) }
 
     fun toggleFavorite(movie: MovieSummary, isFavorite: Boolean) = viewModelScope.launch {
@@ -60,10 +62,10 @@ class CineNostalgiaViewModel(application: Application) : AndroidViewModel(applic
             .onSuccess { _state.value = _state.value.copy(featured = it.ifEmpty { MovieRepository.demoMovies }) }
     }
 
-    private suspend fun runLoading(transform: suspend MovieUiState.() -> MovieUiState) {
+    private suspend fun runLoading(transform: suspend (MovieUiState) -> MovieUiState) {
         _state.value = _state.value.copy(loading = true, error = null)
         _state.value = try {
-            _state.value.transform().copy(loading = false)
+            transform(_state.value).copy(loading = false)
         } catch (_: Exception) {
             _state.value.copy(loading = false, error = "Impossibile caricare i dati. Controlla la connessione e riprova.")
         }

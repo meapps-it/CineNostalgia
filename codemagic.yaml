@@ -8,7 +8,7 @@ workflows:
       - name: Test e APK debug
         script: |
           chmod +x gradlew
-          ./gradlew testDebugUnitTest assembleDebug
+          ./gradlew testDebugUnitTest assembleDebug --stacktrace --console=plain
       - name: AAB release
         script: ./gradlew bundleRelease
     artifacts:

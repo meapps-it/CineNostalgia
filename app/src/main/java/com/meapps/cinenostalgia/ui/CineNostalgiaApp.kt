@@ -146,7 +146,7 @@ private fun MEBottomBar(tab: MainTab, onTab: (MainTab) -> Unit) {
         Modifier.fillMaxWidth().background(Color.White).navigationBarsPadding().padding(10.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        MainTab.entries.forEach { item ->
+        MainTab.values().forEach { item ->
             val selected = item == tab
             Row(
                 Modifier.weight(1f).clickable { onTab(item) }
@@ -249,6 +249,10 @@ private fun MovieResult(movie: MovieSummary, onClick: () -> Unit) {
 @Composable
 private fun DetailScreen(detail: MovieDetail, isFavorite: Boolean, onToggleFavorite: (Boolean) -> Unit) {
     var spoilerVisible by remember(detail.summary.id) { mutableStateOf(false) }
+    val movieMetadata = buildList {
+        detail.runtime?.let { add("$it min") }
+        if (detail.genres.isNotEmpty()) add(detail.genres.joinToString())
+    }.joinToString(" · ")
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
             MECard {
@@ -260,7 +264,9 @@ private fun DetailScreen(detail: MovieDetail, isFavorite: Boolean, onToggleFavor
                         Text(detail.summary.originalTitle, color = MEColors.SecondaryText)
                         Text(detail.summary.year, color = MEColors.Blue, fontWeight = FontWeight.Bold)
                         Text(detail.director ?: "Regista non disponibile", modifier = Modifier.padding(top = 8.dp))
-                        Text(listOfNotNull(detail.runtime?.let { "$it min" }, detail.genres.joinToString().ifBlank { null }).joinToString(" · "), color = MEColors.SecondaryText, fontSize = 13.sp)
+                        if (movieMetadata.isNotBlank()) {
+                            Text(movieMetadata, color = MEColors.SecondaryText, fontSize = 13.sp)
+                        }
                         IconButton(onClick = { onToggleFavorite(isFavorite) }) {
                             Icon(if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "Preferito", tint = if (isFavorite) MEColors.Red else MEColors.Blue)
                         }
@@ -299,7 +305,8 @@ private fun CastSection(cast: List<PersonRole>, releaseDate: String?) {
                 Column(Modifier.weight(1f)) {
                     Text(person.name, fontWeight = FontWeight.Bold)
                     Text(person.character, color = MEColors.SecondaryText)
-                    Text("Nel film: ${releaseDate?.let(person::ageAt)?.let { "$it anni" } ?: "dato non disponibile"}", fontSize = 13.sp)
+                    val ageAtRelease = releaseDate?.let { date -> person.ageAt(date) }
+                    Text("Nel film: ${ageAtRelease?.let { "$it anni" } ?: "dato non disponibile"}", fontSize = 13.sp)
                     Text(if (person.deathday != null) "Età alla morte: ${person.currentAge() ?: "dato non disponibile"}" else "Oggi: ${person.currentAge()?.let { "$it anni" } ?: "dato non disponibile"}", fontSize = 13.sp, color = MEColors.Green)
                     Text("Foto d'epoca non disponibile dalla fonte", fontSize = 11.sp, color = MEColors.SecondaryText)
                 }

@@ -12,7 +12,12 @@ data class MovieSummary(val id:Int,val title:String,val originalTitle:String,val
 data class PersonRole(val id:Int,val name:String,val character:String,val profilePath:String?,val birthday:String?,val deathday:String?) {
     val profileUrl get()=profilePath?.let{"https://image.tmdb.org/t/p/w342$it"}
     fun ageAt(date:String):Int?=birthday?.let{runCatching{Period.between(LocalDate.parse(it),LocalDate.parse(date)).years}.getOrNull()}
-    fun currentAge():Int?=birthday?.let{runCatching{Period.between(LocalDate.parse(it),deathday?.let(LocalDate::parse)?:LocalDate.now()).years}.getOrNull()}
+    fun currentAge():Int?=birthday?.let { birthDate ->
+        runCatching {
+            val endDate = deathday?.let { LocalDate.parse(it) } ?: LocalDate.now()
+            Period.between(LocalDate.parse(birthDate), endDate).years
+        }.getOrNull()
+    }
 }
 data class FilmLocation(val name:String,val scene:String,val realPlace:String,val city:String,val latitude:Double,val longitude:Double,val today:String)
 data class WatchProvider(val name:String,val logoPath:String?){val logoUrl get()=logoPath?.let{"https://image.tmdb.org/t/p/w92$it"}}
