@@ -358,7 +358,7 @@ private fun DetailScreen(detail: MovieDetail, isFavorite: Boolean, onToggleFavor
                 }
             }
         }
-        item { DetailCard("Trama") { Text(detail.overview ?: "Informazione non disponibile") } }
+        item { DetailCard("Trama estesa") { Text(detail.overview ?: "Informazione non disponibile") } }
         item { CastSection(detail.cast, detail.summary.releaseDate) }
         item { LocationsSection(detail.locations) }
         item {
@@ -380,6 +380,11 @@ private fun DetailScreen(detail: MovieDetail, isFavorite: Boolean, onToggleFavor
             DetailCard("Dove vederlo") {
                 if (detail.providers.isEmpty()) Text("Disponibilità non rilevata. I provider dipendono dai dati TMDB per l'Italia.", color = MEColors.SecondaryText)
                 else detail.providers.forEach { Text("• ${it.name}", modifier = Modifier.padding(bottom = 5.dp)) }
+            }
+        }
+        if (detail.sources.isNotEmpty()) item {
+            DetailCard("Fonti della scheda") {
+                detail.sources.forEach { Text("• $it", color = MEColors.SecondaryText, fontSize = 13.sp) }
             }
         }
     }

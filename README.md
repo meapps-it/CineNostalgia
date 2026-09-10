@@ -16,6 +16,8 @@ Package ID stabile: `com.meapps.cinenostalgia`.
 - dimensione del testo regolabile e persistente, applicata sopra le impostazioni di sistema
 - cataloghi Anni 70, 80, 90 e 2000 con caricamento progressivo da TMDB
 - navigazione Indietro coerente con il tasto di sistema Android
+- arricchimento automatico da Wikipedia per trama estesa, spoiler e produzione
+- location con coordinate da Wikidata e apertura nell'app mappe
 
 ## Configurazione TMDB
 

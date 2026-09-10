@@ -21,7 +21,7 @@ data class PersonRole(val id:Int,val name:String,val character:String,val profil
 }
 data class FilmLocation(val name:String,val scene:String,val realPlace:String,val city:String,val latitude:Double,val longitude:Double,val today:String)
 data class WatchProvider(val name:String,val logoPath:String?){val logoUrl get()=logoPath?.let{"https://image.tmdb.org/t/p/w92$it"}}
-data class MovieDetail(val summary:MovieSummary,val director:String?,val runtime:Int?,val genres:List<String>,val overview:String?,val spoiler:String?,val cast:List<PersonRole>,val locations:List<FilmLocation>,val curiosities:List<String>,val providers:List<WatchProvider>)
+data class MovieDetail(val summary:MovieSummary,val director:String?,val runtime:Int?,val genres:List<String>,val overview:String?,val spoiler:String?,val cast:List<PersonRole>,val locations:List<FilmLocation>,val curiosities:List<String>,val providers:List<WatchProvider>,val sources:List<String> = emptyList())
 
 @Entity(tableName="favorites")
 data class FavoriteEntity(@PrimaryKey val movieId:Int,val title:String,val originalTitle:String,val releaseDate:String?,val posterPath:String?) {

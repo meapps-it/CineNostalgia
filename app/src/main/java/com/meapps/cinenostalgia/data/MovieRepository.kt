@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.map
 class MovieRepository(
     private val api: TmdbApi,
     private val favorites: FavoriteDao,
+    private val knowledge: KnowledgeRepository,
     private val apiKey: String
 ) {
     val hasApiKey: Boolean get() = apiKey.isNotBlank()
@@ -53,6 +54,8 @@ class MovieRepository(
         val creditsRequest = async { api.credits(id, apiKey) }
         val providersRequest = async { runCatching { api.providers(id, apiKey) }.getOrNull() }
         val movie = movieRequest.await()
+        val summary = movie.toSummary()
+        val knowledgeRequest = async { runCatching { knowledge.enrich(summary) }.getOrDefault(KnowledgeEnrichment()) }
         val credits = creditsRequest.await()
         val cast = credits.cast.take(8).map { member ->
             async {
@@ -61,20 +64,24 @@ class MovieRepository(
             }
         }.awaitAll()
         val isBackToFuture = id == DEMO_MOVIE_ID
+        val enrichment = knowledgeRequest.await()
+        val editorialLocations = if (isBackToFuture) demoDetail.locations else emptyList()
+        val editorialCuriosities = if (isBackToFuture) demoDetail.curiosities else emptyList()
         MovieDetail(
-            summary = movie.toSummary(),
+            summary = summary,
             director = credits.crew.firstOrNull { it.job == "Director" }?.name,
             runtime = movie.runtime,
             genres = movie.genres.map { it.name },
-            overview = movie.overview,
-            spoiler = if (isBackToFuture) demoDetail.spoiler else null,
+            overview = enrichment.extendedOverview?.takeIf { it.length > (movie.overview?.length ?: 0) } ?: movie.overview,
+            spoiler = enrichment.spoiler ?: if (isBackToFuture) demoDetail.spoiler else null,
             cast = cast,
-            locations = if (isBackToFuture) demoDetail.locations else emptyList(),
-            curiosities = if (isBackToFuture) demoDetail.curiosities else emptyList(),
+            locations = (editorialLocations + enrichment.locations).distinctBy { "${it.latitude},${it.longitude}" },
+            curiosities = (editorialCuriosities + enrichment.curiosities).distinct(),
             providers = providersRequest.await()?.results?.italy?.let { country ->
                 (country.flatrate.orEmpty() + country.rent.orEmpty() + country.buy.orEmpty()).distinctBy { it.name }
                     .map { WatchProvider(it.name, it.logoPath) }
-            }.orEmpty()
+            }.orEmpty(),
+            sources = enrichment.sources
         )
     }
 
