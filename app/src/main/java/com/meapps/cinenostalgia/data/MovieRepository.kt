@@ -123,7 +123,7 @@ class MovieRepository(
         val creditsRequest = async { api.tvCredits(item.id, apiKey) }
         val providersRequest = async { runCatching { api.tvProviders(item.id, apiKey) }.getOrNull() }
         val tv = detailRequest.await()
-        val summary = MovieSummary(tv.id, tv.name, tv.originalName, tv.firstAirDate, tv.posterPath, "tv")
+        val summary = MovieSummary(tv.id, tv.name, tv.originalName, tv.firstAirDate, tv.posterPath ?: tv.backdropPath, "tv")
         val knowledgeRequest = async { runCatching { knowledge.enrich(summary) }.getOrDefault(KnowledgeEnrichment()) }
         val credits = creditsRequest.await()
         val cast = credits.cast.take(8).map { member ->
@@ -160,10 +160,10 @@ class MovieRepository(
     }
 
     private fun com.meapps.cinenostalgia.network.MovieDto.toSummary() =
-        MovieSummary(id, title, originalTitle, releaseDate, posterPath)
+        MovieSummary(id, title, originalTitle, releaseDate, posterPath ?: backdropPath)
 
     private fun com.meapps.cinenostalgia.network.TvDto.toSummary() =
-        MovieSummary(id, name, originalName, firstAirDate, posterPath, "tv")
+        MovieSummary(id, name, originalName, firstAirDate, posterPath ?: backdropPath, "tv")
 
     private fun com.meapps.cinenostalgia.network.CombinedCreditDto.toSummary(): MovieSummary? {
         val type = mediaType ?: return null
@@ -171,11 +171,11 @@ class MovieRepository(
         val displayTitle = if (type == "movie") title else name
         val original = if (type == "movie") originalTitle else originalName
         return MovieSummary(id, displayTitle ?: return null, original ?: displayTitle,
-            if (type == "movie") releaseDate else firstAirDate, posterPath, type)
+            if (type == "movie") releaseDate else firstAirDate, posterPath ?: backdropPath, type)
     }
 
     private fun com.meapps.cinenostalgia.network.MovieDetailDto.toSummary() =
-        MovieSummary(id, title, originalTitle, releaseDate, posterPath)
+        MovieSummary(id, title, originalTitle, releaseDate, posterPath ?: backdropPath)
 
     private fun MovieSummary.storageId(): Int = if (mediaType == "tv") -id else id
 

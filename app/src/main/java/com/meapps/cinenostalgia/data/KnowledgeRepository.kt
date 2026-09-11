@@ -49,7 +49,7 @@ class KnowledgeRepository(
         val production = (triviaIndex ?: productionIndex)?.let { clean(wikipedia.sectionText(page = page, section = it).parse?.text) }
         return KnowledgeEnrichment(
             extendedOverview = intro?.takeIf { it.length >= 180 },
-            spoiler = plot?.takeIf { it.length >= 120 },
+            spoiler = plot?.takeIf { it.length >= 120 }?.let(::endingOnly),
             curiosities = production?.takeIf { it.length >= 80 }?.let(::listOf).orEmpty(),
             sources = listOf("Wikipedia · $page")
         )
@@ -89,5 +89,12 @@ class KnowledgeRepository(
     private fun clean(html: String?): String? = html?.let {
         Jsoup.parse(it).apply { select("sup, table, style, script, .mw-editsection").remove() }.text()
             .replace(Regex("\\s+"), " ").trim().takeIf { text -> text.isNotBlank() }
+    }
+
+    private fun endingOnly(plot: String): String {
+        val sentences = plot.split(Regex("(?<=[.!?])\\s+"))
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+        return sentences.takeLast(6).joinToString(" ").ifBlank { plot }
     }
 }

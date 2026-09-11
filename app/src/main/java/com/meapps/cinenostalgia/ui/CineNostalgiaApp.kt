@@ -456,7 +456,7 @@ private fun DetailScreen(detail: MovieDetail, isFavorite: Boolean, onToggleFavor
             }
         }
         item {
-            DetailCard("Spoiler") {
+            DetailCard("Finale · Spoiler") {
                 if (!spoilerVisible) Button(onClick = { spoilerVisible = true }, colors = ButtonDefaults.buttonColors(containerColor = MEColors.Blue)) { Text("Mostra spoiler") }
                 else Text(detail.spoiler ?: "Informazione non disponibile")
             }
@@ -477,7 +477,7 @@ private fun DetailScreen(detail: MovieDetail, isFavorite: Boolean, onToggleFavor
 
 @Composable
 private fun CastSection(cast: List<PersonRole>, releaseDate: String?, onPerson: (Int) -> Unit) {
-    DetailCard("Cast · Allora e oggi") {
+    DetailCard("Cast e attori") {
         if (cast.isEmpty()) Text("Informazione non disponibile dalle fonti collegate.", color = MEColors.SecondaryText)
         cast.forEach { person ->
             Row(Modifier.fillMaxWidth().clickable { onPerson(person.id) }.padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -489,7 +489,6 @@ private fun CastSection(cast: List<PersonRole>, releaseDate: String?, onPerson: 
                     val ageAtRelease = releaseDate?.let { date -> person.ageAt(date) }
                     Text("Nel film: ${ageAtRelease?.let { "$it anni" } ?: "dato non disponibile"}", fontSize = 13.sp)
                     Text(if (person.deathday != null) "Età alla morte: ${person.currentAge() ?: "dato non disponibile"}" else "Oggi: ${person.currentAge()?.let { "$it anni" } ?: "dato non disponibile"}", fontSize = 13.sp, color = MEColors.Green)
-                    Text("Foto d'epoca non disponibile dalla fonte", fontSize = 11.sp, color = MEColors.SecondaryText)
                     Text("Tocca per aprire la scheda completa", fontSize = 11.sp, color = MEColors.Blue, fontWeight = FontWeight.Bold)
                 }
             }

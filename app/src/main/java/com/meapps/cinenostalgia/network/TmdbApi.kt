@@ -11,9 +11,11 @@ data class PersonSearchDto(val id:Int,val name:String)
 data class PersonMovieCreditsDto(val cast:List<MovieDto>)
 data class TvSearchResponse(val results:List<TvDto>)
 data class TvDto(val id:Int,val name:String,@SerializedName("original_name")val originalName:String,
-    @SerializedName("first_air_date")val firstAirDate:String?,@SerializedName("poster_path")val posterPath:String?)
+    @SerializedName("first_air_date")val firstAirDate:String?,@SerializedName("poster_path")val posterPath:String?,
+    @SerializedName("backdrop_path")val backdropPath:String?)
 data class MovieDto(val id:Int,val title:String,@SerializedName("original_title")val originalTitle:String,
-    @SerializedName("release_date")val releaseDate:String?,@SerializedName("poster_path")val posterPath:String?)
+    @SerializedName("release_date")val releaseDate:String?,@SerializedName("poster_path")val posterPath:String?,
+    @SerializedName("backdrop_path")val backdropPath:String?)
 data class GenreDto(val name:String)
 data class CrewDto(val name:String,val job:String)
 data class CastDto(val id:Int,val name:String,val character:String,@SerializedName("profile_path")val profilePath:String?)
@@ -26,16 +28,16 @@ data class ProviderResultsDto(@SerializedName("IT")val italy:ProviderCountryDto?
 data class ProviderResponseDto(val results:ProviderResultsDto)
 data class MovieDetailDto(val id:Int,val title:String,@SerializedName("original_title")val originalTitle:String,
     @SerializedName("release_date")val releaseDate:String?,@SerializedName("poster_path")val posterPath:String?,
-    val runtime:Int?,val overview:String?,val genres:List<GenreDto>)
+    @SerializedName("backdrop_path")val backdropPath:String?,val runtime:Int?,val overview:String?,val genres:List<GenreDto>)
 data class CreatorDto(val name:String)
 data class TvDetailDto(val id:Int,val name:String,@SerializedName("original_name")val originalName:String,
     @SerializedName("first_air_date")val firstAirDate:String?,@SerializedName("poster_path")val posterPath:String?,
-    @SerializedName("episode_run_time")val episodeRunTime:List<Int>?,val overview:String?,val genres:List<GenreDto>,
+    @SerializedName("backdrop_path")val backdropPath:String?,@SerializedName("episode_run_time")val episodeRunTime:List<Int>?,val overview:String?,val genres:List<GenreDto>,
     @SerializedName("created_by")val createdBy:List<CreatorDto>?)
 data class CombinedCreditDto(val id:Int,@SerializedName("media_type")val mediaType:String?,val title:String?,val name:String?,
     @SerializedName("original_title")val originalTitle:String?,@SerializedName("original_name")val originalName:String?,
     @SerializedName("release_date")val releaseDate:String?,@SerializedName("first_air_date")val firstAirDate:String?,
-    @SerializedName("poster_path")val posterPath:String?)
+    @SerializedName("poster_path")val posterPath:String?,@SerializedName("backdrop_path")val backdropPath:String?)
 data class CombinedCreditsResponse(val cast:List<CombinedCreditDto>)
 data class KeywordDto(val id:Int,val name:String)
 data class KeywordSearchResponse(val results:List<KeywordDto>)
