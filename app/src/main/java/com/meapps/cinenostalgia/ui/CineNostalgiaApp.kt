@@ -72,6 +72,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.meapps.cinenostalgia.BuildConfig
 import com.meapps.cinenostalgia.data.FilmLocation
 import com.meapps.cinenostalgia.data.MovieDetail
 import com.meapps.cinenostalgia.data.MovieSummary
@@ -276,6 +277,7 @@ private fun SettingsScreen(fontScale: Float, onFontScaleChange: (Float) -> Unit)
                 Text("Il cursore si aggiunge alla dimensione scelta nelle impostazioni Samsung.", fontSize = 12.sp, color = MEColors.SecondaryText, modifier = Modifier.padding(top = 8.dp))
             }
         }
+        item { DetailCard("Informazioni") { Text("CineNostalgia ${BuildConfig.VERSION_NAME}", fontWeight = FontWeight.Bold) } }
     }
 }
 
@@ -414,6 +416,7 @@ private fun CastSection(cast: List<PersonRole>, releaseDate: String?, onPerson: 
                     Text("Nel film: ${ageAtRelease?.let { "$it anni" } ?: "dato non disponibile"}", fontSize = 13.sp)
                     Text(if (person.deathday != null) "Età alla morte: ${person.currentAge() ?: "dato non disponibile"}" else "Oggi: ${person.currentAge()?.let { "$it anni" } ?: "dato non disponibile"}", fontSize = 13.sp, color = MEColors.Green)
                     Text("Foto d'epoca non disponibile dalla fonte", fontSize = 11.sp, color = MEColors.SecondaryText)
+                    Text("Tocca per aprire la scheda completa", fontSize = 11.sp, color = MEColors.Blue, fontWeight = FontWeight.Bold)
                 }
             }
         }
