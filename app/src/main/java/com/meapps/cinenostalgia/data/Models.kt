@@ -5,9 +5,18 @@ import androidx.room.PrimaryKey
 import java.time.LocalDate
 import java.time.Period
 
-data class MovieSummary(val id:Int,val title:String,val originalTitle:String,val releaseDate:String?,val posterPath:String?) {
+data class MovieSummary(val id:Int,val title:String,val originalTitle:String,val releaseDate:String?,val posterPath:String?,val mediaType:String="movie") {
     val year get()=releaseDate?.take(4).orEmpty()
     val posterUrl get()=posterPath?.let{"https://image.tmdb.org/t/p/w500$it"}
+}
+data class PersonDetail(
+    val id:Int,val name:String,val profilePath:String?,val birthday:String?,val deathday:String?,
+    val placeOfBirth:String?,val biography:String?,val knownFor:String?,val filmography:List<MovieSummary>,val wikipediaSource:String?
+) {
+    val profileUrl get()=profilePath?.let{"https://image.tmdb.org/t/p/w500$it"}
+    fun currentAge():Int?=birthday?.let { birth ->
+        runCatching { Period.between(LocalDate.parse(birth), deathday?.let { LocalDate.parse(it) } ?: LocalDate.now()).years }.getOrNull()
+    }
 }
 data class PersonRole(val id:Int,val name:String,val character:String,val profilePath:String?,val birthday:String?,val deathday:String?) {
     val profileUrl get()=profilePath?.let{"https://image.tmdb.org/t/p/w342$it"}
@@ -25,5 +34,5 @@ data class MovieDetail(val summary:MovieSummary,val director:String?,val runtime
 
 @Entity(tableName="favorites")
 data class FavoriteEntity(@PrimaryKey val movieId:Int,val title:String,val originalTitle:String,val releaseDate:String?,val posterPath:String?) {
-    fun summary()=MovieSummary(movieId,title,originalTitle,releaseDate,posterPath)
+    fun summary()=MovieSummary(kotlin.math.abs(movieId),title,originalTitle,releaseDate,posterPath,if(movieId<0)"tv" else "movie")
 }

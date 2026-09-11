@@ -18,6 +18,8 @@ Package ID stabile: `com.meapps.cinenostalgia`.
 - navigazione Indietro coerente con il tasto di sistema Android
 - arricchimento automatico da Wikipedia per trama estesa, spoiler e produzione
 - location con coordinate da Wikidata e apertura nell'app mappe
+- schede attore con biografia Wikipedia, dati anagrafici e filmografia
+- ricerca e schede dedicate anche alle serie TV
 
 ## Configurazione TMDB
 

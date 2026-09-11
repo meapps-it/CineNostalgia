@@ -76,6 +76,7 @@ import com.meapps.cinenostalgia.data.FilmLocation
 import com.meapps.cinenostalgia.data.MovieDetail
 import com.meapps.cinenostalgia.data.MovieSummary
 import com.meapps.cinenostalgia.data.PersonRole
+import com.meapps.cinenostalgia.data.PersonDetail
 import com.meapps.cinenostalgia.ui.theme.MEColors
 
 private enum class MainTab(val label: String) { HOME("Home"), SEARCH("Cerca"), FAVORITES("Preferiti") }
@@ -96,6 +97,7 @@ fun CineNostalgiaApp(viewModel: CineNostalgiaViewModel = viewModel()) {
 
     val navigateBack: () -> Unit = {
         when {
+            state.personDetail != null -> viewModel.closePerson()
             credits -> credits = false
             settings -> settings = false
             state.detail != null -> viewModel.closeMovie()
@@ -103,31 +105,33 @@ fun CineNostalgiaApp(viewModel: CineNostalgiaViewModel = viewModel()) {
             tab != MainTab.HOME -> tab = MainTab.HOME
         }
     }
-    val hasInternalBackStack = credits || settings || state.detail != null || state.decadeLabel != null || tab != MainTab.HOME
+    val hasInternalBackStack = state.personDetail != null || credits || settings || state.detail != null || state.decadeLabel != null || tab != MainTab.HOME
     BackHandler(enabled = hasInternalBackStack, onBack = navigateBack)
 
     Scaffold(
         topBar = {
             MEHeader(
-                canGoBack = state.detail != null || state.decadeLabel != null || credits || settings,
+                canGoBack = state.personDetail != null || state.detail != null || state.decadeLabel != null || credits || settings,
                 onBack = navigateBack,
                 onCredits = { credits = true },
                 onSettings = { settings = true }
             )
         },
         bottomBar = {
-            if (state.detail == null && state.decadeLabel == null && !credits && !settings) MEBottomBar(tab = tab, onTab = { tab = it })
+            if (state.personDetail == null && state.detail == null && state.decadeLabel == null && !credits && !settings) MEBottomBar(tab = tab, onTab = { tab = it })
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             when {
+                state.personDetail != null -> PersonDetailScreen(state.personDetail!!)
                 credits -> CreditsScreen()
                 settings -> SettingsScreen(fontScale, viewModel::setFontScale)
                 state.detail != null -> DetailScreen(
                     detail = state.detail!!,
-                    isFavorite = favorites.any { it.id == state.detail!!.summary.id },
-                    onToggleFavorite = { viewModel.toggleFavorite(state.detail!!.summary, it) }
+                    isFavorite = favorites.any { it.id == state.detail!!.summary.id && it.mediaType == state.detail!!.summary.mediaType },
+                    onToggleFavorite = { viewModel.toggleFavorite(state.detail!!.summary, it) },
+                    onPerson = viewModel::openPerson
                 )
                 state.decadeLabel != null -> DecadeScreen(
                     state = state,
@@ -218,6 +222,10 @@ private fun HomeScreen(state: MovieUiState, apiReady: Boolean, onQuery: (String)
         }
         item { SectionTitle("Film da riscoprire") }
         item { PosterRow(state.featured) { onQuery(it.title); onSearch() } }
+        if (state.featuredSeries.isNotEmpty()) {
+            item { SectionTitle("Serie TV da riscoprire") }
+            item { PosterRow(state.featuredSeries) { onQuery(it.title); onSearch() } }
+        }
         item { SectionTitle("Viaggia nel tempo") }
         item {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -230,13 +238,13 @@ private fun HomeScreen(state: MovieUiState, apiReady: Boolean, onQuery: (String)
 }
 
 @Composable
-private fun DecadeScreen(state: MovieUiState, onOpen: (Int) -> Unit, onLoadMore: () -> Unit) {
+private fun DecadeScreen(state: MovieUiState, onOpen: (MovieSummary) -> Unit, onLoadMore: () -> Unit) {
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item { SectionTitle(state.decadeLabel ?: "Film") }
         if (state.decadeMovies.isEmpty() && !state.loading) {
             item { MECard { Text("Configura TMDB per caricare l'intero catalogo.", color = MEColors.SecondaryText) } }
         }
-        items(state.decadeMovies, key = { it.id }) { MovieResult(it) { onOpen(it.id) } }
+        items(state.decadeMovies, key = { "${it.mediaType}:${it.id}" }) { MovieResult(it) { onOpen(it) } }
         if (state.canLoadMore && state.decadeMovies.isNotEmpty()) {
             item {
                 Button(onClick = onLoadMore, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = MEColors.Blue)) {
@@ -272,21 +280,21 @@ private fun SettingsScreen(fontScale: Float, onFontScaleChange: (Float) -> Unit)
 }
 
 @Composable
-private fun SearchScreen(state: MovieUiState, onQuery: (String) -> Unit, onOpen: (Int) -> Unit) {
+private fun SearchScreen(state: MovieUiState, onQuery: (String) -> Unit, onOpen: (MovieSummary) -> Unit) {
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item { SearchField(state.query, onQuery) }
         state.error?.let { item { Text(it, color = MEColors.Red) } }
         if (state.query.isNotBlank() && state.results.isEmpty() && !state.loading) item { MECard { Text("Nessun film trovato") } }
-        items(state.results, key = { it.id }) { MovieResult(it) { onOpen(it.id) } }
+        items(state.results, key = { "${it.mediaType}:${it.id}" }) { MovieResult(it) { onOpen(it) } }
     }
 }
 
 @Composable
-private fun FavoritesScreen(movies: List<MovieSummary>, onOpen: (Int) -> Unit) {
+private fun FavoritesScreen(movies: List<MovieSummary>, onOpen: (MovieSummary) -> Unit) {
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item { SectionTitle("I tuoi preferiti") }
         if (movies.isEmpty()) item { MECard { Text("Non hai ancora salvato film.", color = MEColors.SecondaryText) } }
-        items(movies, key = { it.id }) { MovieResult(it) { onOpen(it.id) } }
+        items(movies, key = { "${it.mediaType}:${it.id}" }) { MovieResult(it) { onOpen(it) } }
     }
 }
 
@@ -325,13 +333,14 @@ private fun MovieResult(movie: MovieSummary, onClick: () -> Unit) {
                 Text(movie.title, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 if (movie.originalTitle != movie.title) Text(movie.originalTitle, color = MEColors.SecondaryText)
                 Text(movie.year.ifBlank { "Anno non disponibile" }, color = MEColors.Blue, fontWeight = FontWeight.Bold)
+                Text(if (movie.mediaType == "tv") "SERIE TV" else "FILM", color = MEColors.Amber, fontWeight = FontWeight.Bold, fontSize = 11.sp)
             }
         }
     }
 }
 
 @Composable
-private fun DetailScreen(detail: MovieDetail, isFavorite: Boolean, onToggleFavorite: (Boolean) -> Unit) {
+private fun DetailScreen(detail: MovieDetail, isFavorite: Boolean, onToggleFavorite: (Boolean) -> Unit, onPerson: (Int) -> Unit) {
     var spoilerVisible by remember(detail.summary.id) { mutableStateOf(false) }
     val movieMetadata = buildList {
         detail.runtime?.let { add("$it min") }
@@ -359,7 +368,7 @@ private fun DetailScreen(detail: MovieDetail, isFavorite: Boolean, onToggleFavor
             }
         }
         item { DetailCard("Trama estesa") { Text(detail.overview ?: "Informazione non disponibile") } }
-        item { CastSection(detail.cast, detail.summary.releaseDate) }
+        item { CastSection(detail.cast, detail.summary.releaseDate, onPerson) }
         item { LocationsSection(detail.locations) }
         item {
             DetailCard("Curiosità") {
@@ -391,11 +400,11 @@ private fun DetailScreen(detail: MovieDetail, isFavorite: Boolean, onToggleFavor
 }
 
 @Composable
-private fun CastSection(cast: List<PersonRole>, releaseDate: String?) {
+private fun CastSection(cast: List<PersonRole>, releaseDate: String?, onPerson: (Int) -> Unit) {
     DetailCard("Cast · Allora e oggi") {
         if (cast.isEmpty()) Text("Informazione non disponibile dalle fonti collegate.", color = MEColors.SecondaryText)
         cast.forEach { person ->
-            Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().clickable { onPerson(person.id) }.padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
                 Poster(person.profileUrl, Modifier.size(70.dp))
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
@@ -408,6 +417,41 @@ private fun CastSection(cast: List<PersonRole>, releaseDate: String?) {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun PersonDetailScreen(person: PersonDetail) {
+    LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item {
+            MECard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Poster(person.profileUrl, Modifier.size(110.dp))
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(person.name, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+                        person.knownFor?.let { Text(it, color = MEColors.Blue) }
+                        Text("Nascita: ${person.birthday ?: "non disponibile"}", fontSize = 13.sp)
+                        person.deathday?.let { Text("Morte: $it", fontSize = 13.sp) }
+                        person.currentAge()?.let { age -> Text(if (person.deathday == null) "Età attuale: $age anni" else "Età alla morte: $age anni", color = MEColors.Green, fontSize = 13.sp) }
+                        person.placeOfBirth?.let { Text(it, color = MEColors.SecondaryText, fontSize = 13.sp) }
+                    }
+                }
+            }
+        }
+        item { DetailCard("Biografia e storia") { Text(person.biography ?: "Informazione non disponibile dalle fonti collegate.") } }
+        item {
+            DetailCard("Film e serie principali") {
+                if (person.filmography.isEmpty()) Text("Filmografia non disponibile.", color = MEColors.SecondaryText)
+                person.filmography.take(30).forEach { title ->
+                    Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(title.title, Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+                        Text("${title.year} · ${if (title.mediaType == "tv") "Serie" else "Film"}", color = MEColors.SecondaryText, fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+        person.wikipediaSource?.let { source -> item { DetailCard("Fonte") { Text(source, color = MEColors.SecondaryText) } } }
     }
 }
 

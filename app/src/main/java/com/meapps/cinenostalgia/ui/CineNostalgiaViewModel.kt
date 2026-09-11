@@ -7,6 +7,7 @@ import com.meapps.cinenostalgia.CineNostalgiaApplication
 import com.meapps.cinenostalgia.data.MovieDetail
 import com.meapps.cinenostalgia.data.MovieRepository
 import com.meapps.cinenostalgia.data.MovieSummary
+import com.meapps.cinenostalgia.data.PersonDetail
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,7 +21,9 @@ data class MovieUiState(
     val query: String = "",
     val results: List<MovieSummary> = emptyList(),
     val featured: List<MovieSummary> = MovieRepository.demoMovies,
+    val featuredSeries: List<MovieSummary> = emptyList(),
     val detail: MovieDetail? = null,
+    val personDetail: PersonDetail? = null,
     val decadeLabel: String? = null,
     val decadeMovies: List<MovieSummary> = emptyList(),
     val decadePage: Int = 0,
@@ -55,10 +58,16 @@ class CineNostalgiaViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
-    fun openMovie(id: Int) = viewModelScope.launch {
-        runLoading { current -> current.copy(detail = repository.detail(id)) }
+    fun openMovie(item: MovieSummary) = viewModelScope.launch {
+        runLoading { current -> current.copy(detail = repository.detail(item)) }
     }
     fun closeMovie() { _state.value = _state.value.copy(detail = null, error = null) }
+
+    fun openPerson(id: Int) = viewModelScope.launch {
+        runLoading { current -> current.copy(personDetail = repository.personDetail(id)) }
+    }
+
+    fun closePerson() { _state.value = _state.value.copy(personDetail = null, error = null) }
 
     fun toggleFavorite(movie: MovieSummary, isFavorite: Boolean) = viewModelScope.launch {
         repository.toggleFavorite(movie, isFavorite)
@@ -78,8 +87,9 @@ class CineNostalgiaViewModel(application: Application) : AndroidViewModel(applic
     }
 
     private fun loadFeatured() = viewModelScope.launch {
-        runCatching { repository.discover(1970, 2009) }
-            .onSuccess { _state.value = _state.value.copy(featured = it.ifEmpty { MovieRepository.demoMovies }) }
+        val films = runCatching { repository.discover(1970, 2009) }.getOrDefault(MovieRepository.demoMovies)
+        val series = runCatching { repository.discoverSeries() }.getOrDefault(emptyList())
+        _state.value = _state.value.copy(featured = films.ifEmpty { MovieRepository.demoMovies }, featuredSeries = series)
     }
 
     private suspend fun loadDecadePage(fromYear: Int, toYear: Int) {

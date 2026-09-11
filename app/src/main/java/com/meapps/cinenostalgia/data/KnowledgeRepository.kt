@@ -16,9 +16,15 @@ class KnowledgeRepository(
     private val wikipedia: WikipediaApi,
     private val wikidata: WikidataApi
 ) {
+    suspend fun personBiography(name: String): Pair<String?, String?> {
+        val page = wikipedia.search(query = name).query?.search?.firstOrNull()?.title ?: return null to null
+        val biography = clean(wikipedia.sectionText(page = page, section = "0").parse?.text)
+        return biography to "Wikipedia · $page"
+    }
+
     suspend fun enrich(movie: MovieSummary): KnowledgeEnrichment {
         val wikipediaData = runCatching { wikipediaData(movie) }.getOrDefault(KnowledgeEnrichment())
-        val locations = runCatching { wikidataLocations(movie.id) }.getOrDefault(emptyList())
+        val locations = runCatching { wikidataLocations(movie.id, movie.mediaType) }.getOrDefault(emptyList())
         return wikipediaData.copy(
             locations = locations,
             sources = buildList {
@@ -29,7 +35,8 @@ class KnowledgeRepository(
     }
 
     private suspend fun wikipediaData(movie: MovieSummary): KnowledgeEnrichment {
-        val searchTerm = "${movie.title} ${movie.year} film"
+        val kind = if (movie.mediaType == "tv") "serie televisiva" else "film"
+        val searchTerm = "${movie.title} ${movie.year} $kind"
         val page = wikipedia.search(query = searchTerm).query?.search?.firstOrNull()?.title ?: return KnowledgeEnrichment()
         val sections = wikipedia.sections(page = page).parse?.sections.orEmpty()
         val intro = clean(wikipedia.sectionText(page = page, section = "0").parse?.text)
@@ -48,10 +55,11 @@ class KnowledgeRepository(
         )
     }
 
-    private suspend fun wikidataLocations(tmdbId: Int): List<FilmLocation> {
+    private suspend fun wikidataLocations(tmdbId: Int, mediaType: String): List<FilmLocation> {
+        val tmdbProperty = if (mediaType == "tv") "P4983" else "P4947"
         val query = """
             SELECT DISTINCT ?location ?locationLabel ?coord ?description WHERE {
-              ?film wdt:P4947 "$tmdbId"; wdt:P915 ?location.
+              ?film wdt:$tmdbProperty "$tmdbId"; wdt:P915 ?location.
               OPTIONAL { ?location wdt:P625 ?coord. }
               OPTIONAL { ?location schema:description ?description. FILTER(LANG(?description) = "it") }
               SERVICE wikibase:label { bd:serviceParam wikibase:language "it,en". }
