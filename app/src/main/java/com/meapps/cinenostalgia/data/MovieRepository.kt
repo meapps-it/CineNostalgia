@@ -13,6 +13,7 @@ class MovieRepository(
     private val knowledge: KnowledgeRepository,
     private val apiKey: String
 ) {
+    private val keywordCache = mutableMapOf<String, Int>()
     val hasApiKey: Boolean get() = apiKey.isNotBlank()
     val favoriteMovies: Flow<List<MovieSummary>> = favorites.observeAll().map { list -> list.map { it.summary() } }
 
@@ -46,6 +47,31 @@ class MovieRepository(
     suspend fun discover(fromYear: Int, toYear: Int, page: Int = 1): List<MovieSummary> {
         if (!hasApiKey) return demoMovies
         return api.discover(apiKey, "$fromYear-01-01", "$toYear-12-31", page).results.map { it.toSummary() }
+    }
+
+    suspend fun discoverCategory(
+        fromYear: Int = 1960,
+        toYear: Int = 2009,
+        page: Int = 1,
+        genreId: Int? = null,
+        originalLanguage: String? = null,
+        keyword: String? = null
+    ): List<MovieSummary> {
+        if (!hasApiKey) return demoMovies
+        val keywordId = keyword?.let { term ->
+            keywordCache[term] ?: runCatching { api.searchKeyword(apiKey, term).results.firstOrNull()?.id }.getOrNull()
+                ?.also { keywordCache[term] = it }
+                ?: return emptyList()
+        }
+        return api.discover(
+            key = apiKey,
+            from = "$fromYear-01-01",
+            to = "$toYear-12-31",
+            page = page,
+            originalLanguage = originalLanguage,
+            genreId = genreId,
+            keywordId = keywordId
+        ).results.map { it.toSummary() }
     }
 
     suspend fun discoverSeries(fromYear: Int = 1970, toYear: Int = 2009, page: Int = 1): List<MovieSummary> {

@@ -37,6 +37,8 @@ data class CombinedCreditDto(val id:Int,@SerializedName("media_type")val mediaTy
     @SerializedName("release_date")val releaseDate:String?,@SerializedName("first_air_date")val firstAirDate:String?,
     @SerializedName("poster_path")val posterPath:String?)
 data class CombinedCreditsResponse(val cast:List<CombinedCreditDto>)
+data class KeywordDto(val id:Int,val name:String)
+data class KeywordSearchResponse(val results:List<KeywordDto>)
 
 interface TmdbApi {
     @GET("search/movie") suspend fun search(@Query("api_key")key:String,@Query("query")query:String,@Query("language")language:String="it-IT"):SearchResponse
@@ -44,9 +46,12 @@ interface TmdbApi {
     @GET("search/person") suspend fun searchPeople(@Query("api_key")key:String,@Query("query")query:String,@Query("language")language:String="it-IT"):PersonSearchResponse
     @GET("person/{id}/movie_credits") suspend fun personMovieCredits(@Path("id")id:Int,@Query("api_key")key:String,@Query("language")language:String="it-IT"):PersonMovieCreditsDto
     @GET("person/{id}/combined_credits") suspend fun personCombinedCredits(@Path("id")id:Int,@Query("api_key")key:String,@Query("language")language:String="it-IT"):CombinedCreditsResponse
-    @GET("discover/movie") suspend fun discover(@Query("api_key")key:String,@Query("primary_release_date.gte")from:String,@Query("primary_release_date.lte")to:String,
+    @GET("discover/movie") suspend fun discover(@Query("api_key")key:String,@Query("primary_release_date.gte")from:String?,@Query("primary_release_date.lte")to:String?,
         @Query("page")page:Int=1,@Query("sort_by")sort:String="popularity.desc",@Query("language")language:String="it-IT",
-        @Query("include_adult")includeAdult:Boolean=false):SearchResponse
+        @Query("include_adult")includeAdult:Boolean=false,@Query("with_original_language")originalLanguage:String?=null,
+        @Query("with_genres")genreId:Int?=null,@Query("with_keywords")keywordId:Int?=null,
+        @Query("vote_count.gte")minimumVotes:Int=5):SearchResponse
+    @GET("search/keyword") suspend fun searchKeyword(@Query("api_key")key:String,@Query("query")query:String,@Query("page")page:Int=1):KeywordSearchResponse
     @GET("discover/tv") suspend fun discoverTv(@Query("api_key")key:String,@Query("first_air_date.gte")from:String,@Query("first_air_date.lte")to:String,
         @Query("page")page:Int=1,@Query("sort_by")sort:String="popularity.desc",@Query("language")language:String="it-IT",
         @Query("include_adult")includeAdult:Boolean=false):TvSearchResponse

@@ -82,9 +82,41 @@ import com.meapps.cinenostalgia.ui.theme.MEColors
 
 private enum class MainTab(val label: String) { HOME("Home"), SEARCH("Cerca"), FAVORITES("Preferiti") }
 private data class Decade(val label: String, val fromYear: Int, val toYear: Int)
+private data class GenreChoice(
+    val label: String,
+    val genreId: Int? = null,
+    val originalLanguage: String? = null,
+    val keyword: String? = null,
+    val fromYear: Int = 1960,
+    val toYear: Int = 2009,
+    val color: Color = MEColors.Blue,
+    val softColor: Color = MEColors.BlueSoft
+)
 private val decades = listOf(
     Decade("Anni 70", 1970, 1979), Decade("Anni 80", 1980, 1989),
     Decade("Anni 90", 1990, 1999), Decade("Anni 2000", 2000, 2009)
+)
+private val genres = listOf(
+    GenreChoice("Tutti", color = MEColors.Blue, softColor = MEColors.BlueSoft),
+    GenreChoice("Commedia", 35, color = MEColors.Amber, softColor = MEColors.AmberSoft),
+    GenreChoice("Horror", 27, color = MEColors.Red, softColor = Color(0xFFFFE8E8)),
+    GenreChoice("Thriller", 53, color = MEColors.Purple, softColor = MEColors.PurpleSoft),
+    GenreChoice("Giallo", 9648, color = MEColors.Teal, softColor = MEColors.GreenSoft),
+    GenreChoice("Fantascienza", 878, color = MEColors.Sky, softColor = MEColors.SkySoft),
+    GenreChoice("Drammatico", 18, color = MEColors.Pink, softColor = MEColors.PinkSoft)
+)
+private val horrorCategories = listOf(
+    GenreChoice("Horror italiani", 27, "it", color = MEColors.Green, softColor = MEColors.GreenSoft),
+    GenreChoice("Slasher", 27, keyword = "slasher", color = MEColors.Red, softColor = Color(0xFFFFE8E8)),
+    GenreChoice("Zombie", 27, keyword = "zombie", color = MEColors.Teal, softColor = MEColors.GreenSoft),
+    GenreChoice("Demoni e possessioni", 27, keyword = "demon", color = MEColors.Purple, softColor = MEColors.PurpleSoft),
+    GenreChoice("Fantasmi", 27, keyword = "ghost", color = MEColors.Sky, softColor = MEColors.SkySoft),
+    GenreChoice("Vampiri", 27, keyword = "vampire", color = MEColors.Pink, softColor = MEColors.PinkSoft),
+    GenreChoice("Horror psicologico", 27, keyword = "psychological horror", color = MEColors.Navy, softColor = Color(0xFFE8ECF4)),
+    GenreChoice("Horror anni 70", 27, fromYear = 1970, toYear = 1979, color = MEColors.Amber, softColor = MEColors.AmberSoft),
+    GenreChoice("Horror anni 80", 27, fromYear = 1980, toYear = 1989, color = MEColors.Blue, softColor = MEColors.BlueSoft),
+    GenreChoice("Horror anni 90", 27, fromYear = 1990, toYear = 1999, color = MEColors.Green, softColor = MEColors.GreenSoft),
+    GenreChoice("Horror anni 2000", 27, fromYear = 2000, toYear = 2009, color = MEColors.Purple, softColor = MEColors.PurpleSoft)
 )
 
 @Composable
@@ -137,14 +169,13 @@ fun CineNostalgiaApp(viewModel: CineNostalgiaViewModel = viewModel()) {
                 state.decadeLabel != null -> DecadeScreen(
                     state = state,
                     onOpen = viewModel::openMovie,
-                    onLoadMore = {
-                        decades.firstOrNull { it.label == state.decadeLabel }?.let { viewModel.loadMoreDecade(it.fromYear, it.toYear) }
-                    }
+                    onLoadMore = viewModel::loadMoreBrowse
                 )
                 tab == MainTab.HOME -> HomeScreen(
                     state, viewModel.apiReady, viewModel::updateQuery,
                     onSearch = { tab = MainTab.SEARCH },
-                    onDecade = { decade -> viewModel.openDecade(decade.label, decade.fromYear, decade.toYear) }
+                    onDecade = { decade -> viewModel.openDecade(decade.label, decade.fromYear, decade.toYear) },
+                    onCategory = { choice -> viewModel.openCategory(choice.label, choice.genreId, choice.originalLanguage, choice.keyword, choice.fromYear, choice.toYear) }
                 )
                 tab == MainTab.SEARCH -> SearchScreen(state, viewModel::updateQuery, viewModel::openMovie)
                 else -> FavoritesScreen(favorites, viewModel::openMovie)
@@ -211,30 +242,73 @@ private fun MEBottomBar(tab: MainTab, onTab: (MainTab) -> Unit) {
 }
 
 @Composable
-private fun HomeScreen(state: MovieUiState, apiReady: Boolean, onQuery: (String) -> Unit, onSearch: () -> Unit, onDecade: (Decade) -> Unit) {
+private fun HomeScreen(state: MovieUiState, apiReady: Boolean, onQuery: (String) -> Unit, onSearch: () -> Unit, onDecade: (Decade) -> Unit, onCategory: (GenreChoice) -> Unit) {
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
-            MECard {
+            MECard(containerColor = MEColors.BlueSoft, borderColor = Color(0xFFB7CBF7)) {
+                Text("SCOPRI IL CINEMA", color = MEColors.Blue, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
                 Text("Che film vuoi rivivere?", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(10.dp))
                 SearchField(state.query, onQuery, onSearch)
                 if (!apiReady) Text("Modalità demo offline · configura TMDB per cercare tutto il catalogo", color = MEColors.SecondaryText, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
             }
         }
-        item { SectionTitle("Film da riscoprire") }
+        if (state.italianMovies.isNotEmpty()) {
+            item { SectionTitle("Cinema italiano in primo piano", MEColors.Green) }
+            item { PosterRow(state.italianMovies) { onQuery(it.title); onSearch() } }
+        }
+        item { SectionTitle("Scegli il genere", MEColors.Purple) }
+        item { ChoiceRow(genres, onCategory) }
+        item { SectionTitle("Horror · scegli la tua paura", MEColors.Red) }
+        item { ChoiceGrid(horrorCategories, onCategory) }
+        item { SectionTitle("Film da riscoprire", MEColors.Blue) }
         item { PosterRow(state.featured) { onQuery(it.title); onSearch() } }
         if (state.featuredSeries.isNotEmpty()) {
-            item { SectionTitle("Serie TV da riscoprire") }
+            item { SectionTitle("Serie TV da riscoprire", MEColors.Purple) }
             item { PosterRow(state.featuredSeries) { onQuery(it.title); onSearch() } }
         }
-        item { SectionTitle("Viaggia nel tempo") }
+        item { SectionTitle("Viaggia nel tempo", MEColors.Amber) }
         item {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                 items(decades) { decade ->
-                    Text(decade.label, Modifier.clickable { onDecade(decade) }.background(Color.White, RoundedCornerShape(22.dp)).padding(horizontal = 18.dp, vertical = 12.dp), fontWeight = FontWeight.Bold)
+                    Text(decade.label, Modifier.clickable { onDecade(decade) }.background(MEColors.AmberSoft, RoundedCornerShape(22.dp)).padding(horizontal = 18.dp, vertical = 12.dp), color = MEColors.Navy, fontWeight = FontWeight.Bold)
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ChoiceRow(choices: List<GenreChoice>, onChoice: (GenreChoice) -> Unit) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+        items(choices) { choice -> CategoryChip(choice, onChoice) }
+    }
+}
+
+@Composable
+private fun ChoiceGrid(choices: List<GenreChoice>, onChoice: (GenreChoice) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        choices.chunked(2).forEach { rowChoices ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                rowChoices.forEach { choice ->
+                    Box(Modifier.weight(1f)) { CategoryChip(choice, onChoice, Modifier.fillMaxWidth()) }
+                }
+                if (rowChoices.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun CategoryChip(choice: GenreChoice, onChoice: (GenreChoice) -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        modifier.clickable { onChoice(choice) }.background(choice.softColor, RoundedCornerShape(20.dp))
+            .padding(horizontal = 14.dp, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(Modifier.size(9.dp).background(choice.color, RoundedCornerShape(50)))
+        Spacer(Modifier.width(7.dp))
+        Text(choice.label, color = MEColors.Navy, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1)
     }
 }
 
@@ -499,13 +573,13 @@ private fun Poster(url: String?, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun MECard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+private fun MECard(modifier: Modifier = Modifier, containerColor: Color = MaterialTheme.colorScheme.surface, borderColor: Color = MEColors.Border, content: @Composable ColumnScope.() -> Unit) {
     Card(
         modifier = modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MEColors.Border), elevation = CardDefaults.cardElevation(1.dp)
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = BorderStroke(1.dp, borderColor), elevation = CardDefaults.cardElevation(1.dp)
     ) { Column(Modifier.padding(16.dp), content = content) }
 }
 
 @Composable private fun DetailCard(title: String, content: @Composable ColumnScope.() -> Unit) = MECard { SectionTitle(title); Spacer(Modifier.height(8.dp)); content() }
-@Composable private fun SectionTitle(title: String) { Text(title.uppercase(), fontWeight = FontWeight.ExtraBold, fontSize = 17.sp, color = MaterialTheme.colorScheme.onSurface) }
+@Composable private fun SectionTitle(title: String, color: Color = MaterialTheme.colorScheme.onSurface) { Text(title.uppercase(), fontWeight = FontWeight.ExtraBold, fontSize = 17.sp, color = color) }
